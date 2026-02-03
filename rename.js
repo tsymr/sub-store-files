@@ -1,5 +1,4 @@
 /**
- * From https://raw.githubusercontent.com/Keywos/rule/main/rename.js
  * 更新日期：2024-04-05 15:30:15
  * 用法：Sub-Store 脚本操作添加
  * rename.js 以下是此脚本支持的参数，必须以 # 为开头多个参数使用"&"连接，参考上述地址为例使用参数。 禁用缓存url#noCache
@@ -40,64 +39,99 @@
  * [blockquic] blockquic=on 阻止; blockquic=off 不阻止
  */
 
-// const inArg = {'blkey':'iplc+GPT>GPTnewName+NF+IPLC', 'flag':true };
-const inArg = $arguments; // console.log(inArg)
-const nx = inArg.nx || false,
-    bl = inArg.bl || false,
-    nf = inArg.nf || false,
-    key = inArg.key || false,
-    blgd = inArg.blgd || false,
-    blpx = inArg.blpx || false,
-    blnx = inArg.blnx || false,
-    numone = inArg.one || false,
-    debug = inArg.debug || false,
-    clear = inArg.clear || false,
-    addflag = inArg.flag || false,
-    nm = inArg.nm || false;
+// ============================================================================
+// 参数解析
+// ============================================================================
 
-const FGF = inArg.fgf == undefined ? ' ' : decodeURI(inArg.fgf),
-    XHFGF = inArg.sn == undefined ? ' ' : decodeURI(inArg.sn),
-    FNAME = inArg.name == undefined ? '' : decodeURI(inArg.name),
-    BLKEY = inArg.blkey == undefined ? '' : decodeURI(inArg.blkey),
-    blockquic = inArg.blockquic == undefined ? '' : decodeURI(inArg.blockquic),
-    nameMap = {
-        cn: 'cn',
-        zh: 'cn',
-        us: 'us',
-        en: 'us',
-        quan: 'quan',
-        gq: 'gq',
-        flag: 'gq',
-    },
-    inname = nameMap[inArg.in] || '',
-    outputName = nameMap[inArg.out] || '';
+const inArg = $arguments;
+
+// 布尔参数 - 过滤控制
+const enableMultiplierFilter = inArg.nx || false; // nx: 保留1倍率与不显示倍率的
+const enableMultiplierDetect = inArg.bl !== false; // bl: 默认开启倍率检测
+const enableHighMultiplier = inArg.blnx || false; // blnx: 只保留高倍率
+const enableClearJunk = inArg.clear || false; // clear: 清理乱名
+const enableKeyFilter = inArg.key || false; // key: 关键词过滤
+
+// 布尔参数 - 显示控制
+const prefixFirst = inArg.nf || false; // nf: 前缀放最前
+const enableFlag = inArg.flag !== false; // flag: 默认开启国旗显示
+const keepUnmatched = inArg.nm || false; // nm: 保留未匹配节点
+const removeOnlyOne = inArg.one || false; // one: 清理只有一个节点的地区01
+const enableFixedFormat = inArg.blgd || false; // blgd: 保留固定格式
+const enableSortByMultiplier = inArg.blpx || false; // blpx: 倍率分组排序
+const debug = inArg.debug || false;
+
+// 字符串参数
+const SEPARATOR = inArg.fgf === undefined ? '_' : decodeURI(inArg.fgf); // 国旗/前缀分隔符
+const NUM_SEPARATOR = inArg.sn === undefined ? '_' : decodeURI(inArg.sn); // 序号分隔符
+const PREFIX_NAME = inArg.name === undefined ? '' : decodeURI(inArg.name); // 机场名前缀
+const RETAIN_KEYWORDS = inArg.blkey === undefined ? '' : decodeURI(inArg.blkey); // 保留关键词
+const blockquic =
+    inArg.blockquic === undefined ? '' : decodeURI(inArg.blockquic);
+
+// 输入输出格式映射
+const nameMap = {
+    cn: 'cn',
+    zh: 'cn',
+    us: 'us',
+    en: 'us',
+    quan: 'quan',
+    gq: 'gq',
+    flag: 'gq',
+};
+const inputFormat = nameMap[inArg.in] || '';
+const outputFormat = nameMap[inArg.out] || '';
+
+// ============================================================================
+// 数据表 - 国家/地区映射
+// ============================================================================
+
 // prettier-ignore
-const FG = ['🇭🇰','🇲🇴','🇹🇼','🇯🇵','🇰🇷','🇸🇬','🇺🇸','🇬🇧','🇫🇷','🇩🇪','🇦🇺','🇦🇪','🇦🇫','🇦🇱','🇩🇿','🇦🇴','🇦🇷','🇦🇲','🇦🇹','🇦🇿','🇧🇭','🇧🇩','🇧🇾','🇧🇪','🇧🇿','🇧🇯','🇧🇹','🇧🇴','🇧🇦','🇧🇼','🇧🇷','🇻🇬','🇧🇳','🇧🇬','🇧🇫','🇧🇮','🇰🇭','🇨🇲','🇨🇦','🇨🇻','🇰🇾','🇨🇫','🇹🇩','🇨🇱','🇨🇴','🇰🇲','🇨🇬','🇨🇩','🇨🇷','🇭🇷','🇨🇾','🇨🇿','🇩🇰','🇩🇯','🇩🇴','🇪🇨','🇪🇬','🇸🇻','🇬🇶','🇪🇷','🇪🇪','🇪🇹','🇫🇯','🇫🇮','🇬🇦','🇬🇲','🇬🇪','🇬🇭','🇬🇷','🇬🇱','🇬🇹','🇬🇳','🇬🇾','🇭🇹','🇭🇳','🇭🇺','🇮🇸','🇮🇳','🇮🇩','🇮🇷','🇮🇶','🇮🇪','🇮🇲','🇮🇱','🇮🇹','🇨🇮','🇯🇲','🇯🇴','🇰🇿','🇰🇪','🇰🇼','🇰🇬','🇱🇦','🇱🇻','🇱🇧','🇱🇸','🇱🇷','🇱🇾','🇱🇹','🇱🇺','🇲🇰','🇲🇬','🇲🇼','🇲🇾','🇲🇻','🇲🇱','🇲🇹','🇲🇷','🇲🇺','🇲🇽','🇲🇩','🇲🇨','🇲🇳','🇲🇪','🇲🇦','🇲🇿','🇲🇲','🇳🇦','🇳🇵','🇳🇱','🇳🇿','🇳🇮','🇳🇪','🇳🇬','🇰🇵','🇳🇴','🇴🇲','🇵🇰','🇵🇦','🇵🇾','🇵🇪','🇵🇭','🇵🇹','🇵🇷','🇶🇦','🇷🇴','🇷🇺','🇷🇼','🇸🇲','🇸🇦','🇸🇳','🇷🇸','🇸🇱','🇸🇰','🇸🇮','🇸🇴','🇿🇦','🇪🇸','🇱🇰','🇸🇩','🇸🇷','🇸🇿','🇸🇪','🇨🇭','🇸🇾','🇹🇯','🇹🇿','🇹🇭','🇹🇬','🇹🇴','🇹🇹','🇹🇳','🇹🇷','🇹🇲','🇻🇮','🇺🇬','🇺🇦','🇺🇾','🇺🇿','🇻🇪','🇻🇳','🇾🇪','🇿🇲','🇿🇼','🇦🇩','🇷🇪','🇵🇱','🇬🇺','🇻🇦','🇱🇮','🇨🇼','🇸🇨','🇦🇶','🇬🇮','🇨🇺','🇫🇴','🇦🇽','🇧🇲','🇹🇱']
+const FLAGS = ['🇭🇰', '🇲🇴', '🇹🇼', '🇯🇵', '🇰🇷', '🇸🇬', '🇺🇸', '🇬🇧', '🇫🇷', '🇩🇪', '🇦🇺', '🇦🇪', '🇦🇫', '🇦🇱', '🇩🇿', '🇦🇴', '🇦🇷', '🇦🇲', '🇦🇹', '🇦🇿', '🇧🇭', '🇧🇩', '🇧🇾', '🇧🇪', '🇧🇿', '🇧🇯', '🇧🇹', '🇧🇴', '🇧🇦', '🇧🇼', '🇧🇷', '🇻🇬', '🇧🇳', '🇧🇬', '🇧🇫', '🇧🇮', '🇰🇭', '🇨🇲', '🇨🇦', '🇨🇻', '🇰🇾', '🇨🇫', '🇹🇩', '🇨🇱', '🇨🇴', '🇰🇲', '🇨🇬', '🇨🇩', '🇨🇷', '🇭🇷', '🇨🇾', '🇨🇿', '🇩🇰', '🇩🇯', '🇩🇴', '🇪🇨', '🇪🇬', '🇸🇻', '🇬🇶', '🇪🇷', '🇪🇪', '🇪🇹', '🇫🇯', '🇫🇮', '🇬🇦', '🇬🇲', '🇬🇪', '🇬🇭', '🇬🇷', '🇬🇱', '🇬🇹', '🇬🇳', '🇬🇾', '🇭🇹', '🇭🇳', '🇭🇺', '🇮🇸', '🇮🇳', '🇮🇩', '🇮🇷', '🇮🇶', '🇮🇪', '🇮🇲', '🇮🇱', '🇮🇹', '🇨🇮', '🇯🇲', '🇯🇴', '🇰🇿', '🇰🇪', '🇰🇼', '🇰🇬', '🇱🇦', '🇱🇻', '🇱🇧', '🇱🇸', '🇱🇷', '🇱🇾', '🇱🇹', '🇱🇺', '🇲🇰', '🇲🇬', '🇲🇼', '🇲🇾', '🇲🇻', '🇲🇱', '🇲🇹', '🇲🇷', '🇲🇺', '🇲🇽', '🇲🇩', '🇲🇨', '🇲🇳', '🇲🇪', '🇲🇦', '🇲🇿', '🇲🇲', '🇳🇦', '🇳🇵', '🇳🇱', '🇳🇿', '🇳🇮', '🇳🇪', '🇳🇬', '🇰🇵', '🇳🇴', '🇴🇲', '🇵🇰', '🇵🇦', '🇵🇾', '🇵🇪', '🇵🇭', '🇵🇹', '🇵🇷', '🇶🇦', '🇷🇴', '🇷🇺', '🇷🇼', '🇸🇲', '🇸🇦', '🇸🇳', '🇷🇸', '🇸🇱', '🇸🇰', '🇸🇮', '🇸🇴', '🇿🇦', '🇪🇸', '🇱🇰', '🇸🇩', '🇸🇷', '🇸🇿', '🇸🇪', '🇨🇭', '🇸🇾', '🇹🇯', '🇹🇿', '🇹🇭', '🇹🇬', '🇹🇴', '🇹🇹', '🇹🇳', '🇹🇷', '🇹🇲', '🇻🇮', '🇺🇬', '🇺🇦', '🇺🇾', '🇺🇿', '🇻🇪', '🇻🇳', '🇾🇪', '🇿🇲', '🇿🇼', '🇦🇩', '🇷🇪', '🇵🇱', '🇬🇺', '🇻🇦', '🇱🇮', '🇨🇼', '🇸🇨', '🇦🇶', '🇬🇮', '🇨🇺', '🇫🇴', '🇦🇽', '🇧🇲', '🇹🇱'];
 // prettier-ignore
-const EN = ['HK','MO','TW','JP','KR','SG','US','GB','FR','DE','AU','AE','AF','AL','DZ','AO','AR','AM','AT','AZ','BH','BD','BY','BE','BZ','BJ','BT','BO','BA','BW','BR','VG','BN','BG','BF','BI','KH','CM','CA','CV','KY','CF','TD','CL','CO','KM','CG','CD','CR','HR','CY','CZ','DK','DJ','DO','EC','EG','SV','GQ','ER','EE','ET','FJ','FI','GA','GM','GE','GH','GR','GL','GT','GN','GY','HT','HN','HU','IS','IN','ID','IR','IQ','IE','IM','IL','IT','CI','JM','JO','KZ','KE','KW','KG','LA','LV','LB','LS','LR','LY','LT','LU','MK','MG','MW','MY','MV','ML','MT','MR','MU','MX','MD','MC','MN','ME','MA','MZ','MM','NA','NP','NL','NZ','NI','NE','NG','KP','NO','OM','PK','PA','PY','PE','PH','PT','PR','QA','RO','RU','RW','SM','SA','SN','RS','SL','SK','SI','SO','ZA','ES','LK','SD','SR','SZ','SE','CH','SY','TJ','TZ','TH','TG','TO','TT','TN','TR','TM','VI','UG','UA','UY','UZ','VE','VN','YE','ZM','ZW','AD','RE','PL','GU','VA','LI','CW','SC','AQ','GI','CU','FO','AX','BM','TL'];
+const CODES_EN = ['HK', 'MO', 'TW', 'JP', 'KR', 'SG', 'US', 'GB', 'FR', 'DE', 'AU', 'AE', 'AF', 'AL', 'DZ', 'AO', 'AR', 'AM', 'AT', 'AZ', 'BH', 'BD', 'BY', 'BE', 'BZ', 'BJ', 'BT', 'BO', 'BA', 'BW', 'BR', 'VG', 'BN', 'BG', 'BF', 'BI', 'KH', 'CM', 'CA', 'CV', 'KY', 'CF', 'TD', 'CL', 'CO', 'KM', 'CG', 'CD', 'CR', 'HR', 'CY', 'CZ', 'DK', 'DJ', 'DO', 'EC', 'EG', 'SV', 'GQ', 'ER', 'EE', 'ET', 'FJ', 'FI', 'GA', 'GM', 'GE', 'GH', 'GR', 'GL', 'GT', 'GN', 'GY', 'HT', 'HN', 'HU', 'IS', 'IN', 'ID', 'IR', 'IQ', 'IE', 'IM', 'IL', 'IT', 'CI', 'JM', 'JO', 'KZ', 'KE', 'KW', 'KG', 'LA', 'LV', 'LB', 'LS', 'LR', 'LY', 'LT', 'LU', 'MK', 'MG', 'MW', 'MY', 'MV', 'ML', 'MT', 'MR', 'MU', 'MX', 'MD', 'MC', 'MN', 'ME', 'MA', 'MZ', 'MM', 'NA', 'NP', 'NL', 'NZ', 'NI', 'NE', 'NG', 'KP', 'NO', 'OM', 'PK', 'PA', 'PY', 'PE', 'PH', 'PT', 'PR', 'QA', 'RO', 'RU', 'RW', 'SM', 'SA', 'SN', 'RS', 'SL', 'SK', 'SI', 'SO', 'ZA', 'ES', 'LK', 'SD', 'SR', 'SZ', 'SE', 'CH', 'SY', 'TJ', 'TZ', 'TH', 'TG', 'TO', 'TT', 'TN', 'TR', 'TM', 'VI', 'UG', 'UA', 'UY', 'UZ', 'VE', 'VN', 'YE', 'ZM', 'ZW', 'AD', 'RE', 'PL', 'GU', 'VA', 'LI', 'CW', 'SC', 'AQ', 'GI', 'CU', 'FO', 'AX', 'BM', 'TL'];
 // prettier-ignore
-const ZH = ['香港','澳门','台湾','日本','韩国','新加坡','美国','英国','法国','德国','澳大利亚','阿联酋','阿富汗','阿尔巴尼亚','阿尔及利亚','安哥拉','阿根廷','亚美尼亚','奥地利','阿塞拜疆','巴林','孟加拉国','白俄罗斯','比利时','伯利兹','贝宁','不丹','玻利维亚','波斯尼亚和黑塞哥维那','博茨瓦纳','巴西','英属维京群岛','文莱','保加利亚','布基纳法索','布隆迪','柬埔寨','喀麦隆','加拿大','佛得角','开曼群岛','中非共和国','乍得','智利','哥伦比亚','科摩罗','刚果(布)','刚果(金)','哥斯达黎加','克罗地亚','塞浦路斯','捷克','丹麦','吉布提','多米尼加共和国','厄瓜多尔','埃及','萨尔瓦多','赤道几内亚','厄立特里亚','爱沙尼亚','埃塞俄比亚','斐济','芬兰','加蓬','冈比亚','格鲁吉亚','加纳','希腊','格陵兰','危地马拉','几内亚','圭亚那','海地','洪都拉斯','匈牙利','冰岛','印度','印尼','伊朗','伊拉克','爱尔兰','马恩岛','以色列','意大利','科特迪瓦','牙买加','约旦','哈萨克斯坦','肯尼亚','科威特','吉尔吉斯斯坦','老挝','拉脱维亚','黎巴嫩','莱索托','利比里亚','利比亚','立陶宛','卢森堡','马其顿','马达加斯加','马拉维','马来','马尔代夫','马里','马耳他','毛利塔尼亚','毛里求斯','墨西哥','摩尔多瓦','摩纳哥','蒙古','黑山共和国','摩洛哥','莫桑比克','缅甸','纳米比亚','尼泊尔','荷兰','新西兰','尼加拉瓜','尼日尔','尼日利亚','朝鲜','挪威','阿曼','巴基斯坦','巴拿马','巴拉圭','秘鲁','菲律宾','葡萄牙','波多黎各','卡塔尔','罗马尼亚','俄罗斯','卢旺达','圣马力诺','沙特阿拉伯','塞内加尔','塞尔维亚','塞拉利昂','斯洛伐克','斯洛文尼亚','索马里','南非','西班牙','斯里兰卡','苏丹','苏里南','斯威士兰','瑞典','瑞士','叙利亚','塔吉克斯坦','坦桑尼亚','泰国','多哥','汤加','特立尼达和多巴哥','突尼斯','土耳其','土库曼斯坦','美属维尔京群岛','乌干达','乌克兰','乌拉圭','乌兹别克斯坦','委内瑞拉','越南','也门','赞比亚','津巴布韦','安道尔','留尼汪','波兰','关岛','梵蒂冈','列支敦士登','库拉索','塞舌尔','南极','直布罗陀','古巴','法罗群岛','奥兰群岛','百慕达','东帝汶'];
+const NAMES_ZH = ['香港', '澳门', '台湾', '日本', '韩国', '新加坡', '美国', '英国', '法国', '德国', '澳大利亚', '阿联酋', '阿富汗', '阿尔巴尼亚', '阿尔及利亚', '安哥拉', '阿根廷', '亚美尼亚', '奥地利', '阿塞拜疆', '巴林', '孟加拉国', '白俄罗斯', '比利时', '伯利兹', '贝宁', '不丹', '玻利维亚', '波斯尼亚和黑塞哥维那', '博茨瓦纳', '巴西', '英属维京群岛', '文莱', '保加利亚', '布基纳法索', '布隆迪', '柬埔寨', '喀麦隆', '加拿大', '佛得角', '开曼群岛', '中非共和国', '乍得', '智利', '哥伦比亚', '科摩罗', '刚果(布)', '刚果(金)', '哥斯达黎加', '克罗地亚', '塞浦路斯', '捷克', '丹麦', '吉布提', '多米尼加共和国', '厄瓜多尔', '埃及', '萨尔瓦多', '赤道几内亚', '厄立特里亚', '爱沙尼亚', '埃塞俄比亚', '斐济', '芬兰', '加蓬', '冈比亚', '格鲁吉亚', '加纳', '希腊', '格陵兰', '危地马拉', '几内亚', '圭亚那', '海地', '洪都拉斯', '匈牙利', '冰岛', '印度', '印尼', '伊朗', '伊拉克', '爱尔兰', '马恩岛', '以色列', '意大利', '科特迪瓦', '牙买加', '约旦', '哈萨克斯坦', '肯尼亚', '科威特', '吉尔吉斯斯坦', '老挝', '拉脱维亚', '黎巴嫩', '莱索托', '利比里亚', '利比亚', '立陶宛', '卢森堡', '马其顿', '马达加斯加', '马拉维', '马来', '马尔代夫', '马里', '马耳他', '毛利塔尼亚', '毛里求斯', '墨西哥', '摩尔多瓦', '摩纳哥', '蒙古', '黑山共和国', '摩洛哥', '莫桑比克', '缅甸', '纳米比亚', '尼泊尔', '荷兰', '新西兰', '尼加拉瓜', '尼日尔', '尼日利亚', '朝鲜', '挪威', '阿曼', '巴基斯坦', '巴拿马', '巴拉圭', '秘鲁', '菲律宾', '葡萄牙', '波多黎各', '卡塔尔', '罗马尼亚', '俄罗斯', '卢旺达', '圣马力诺', '沙特阿拉伯', '塞内加尔', '塞尔维亚', '塞拉利昂', '斯洛伐克', '斯洛文尼亚', '索马里', '南非', '西班牙', '斯里兰卡', '苏丹', '苏里南', '斯威士兰', '瑞典', '瑞士', '叙利亚', '塔吉克斯坦', '坦桑尼亚', '泰国', '多哥', '汤加', '特立尼达和多巴哥', '突尼斯', '土耳其', '土库曼斯坦', '美属维尔京群岛', '乌干达', '乌克兰', '乌拉圭', '乌兹别克斯坦', '委内瑞拉', '越南', '也门', '赞比亚', '津巴布韦', '安道尔', '留尼汪', '波兰', '关岛', '梵蒂冈', '列支敦士登', '库拉索', '塞舌尔', '南极', '直布罗陀', '古巴', '法罗群岛', '奥兰群岛', '百慕达', '东帝汶'];
 // prettier-ignore
-const QC = ['Hong Kong','Macao','Taiwan','Japan','Korea','Singapore','United States','United Kingdom','France','Germany','Australia','Dubai','Afghanistan','Albania','Algeria','Angola','Argentina','Armenia','Austria','Azerbaijan','Bahrain','Bangladesh','Belarus','Belgium','Belize','Benin','Bhutan','Bolivia','Bosnia and Herzegovina','Botswana','Brazil','British Virgin Islands','Brunei','Bulgaria','Burkina-faso','Burundi','Cambodia','Cameroon','Canada','CapeVerde','CaymanIslands','Central African Republic','Chad','Chile','Colombia','Comoros','Congo-Brazzaville','Congo-Kinshasa','CostaRica','Croatia','Cyprus','Czech Republic','Denmark','Djibouti','Dominican Republic','Ecuador','Egypt','EISalvador','Equatorial Guinea','Eritrea','Estonia','Ethiopia','Fiji','Finland','Gabon','Gambia','Georgia','Ghana','Greece','Greenland','Guatemala','Guinea','Guyana','Haiti','Honduras','Hungary','Iceland','India','Indonesia','Iran','Iraq','Ireland','Isle of Man','Israel','Italy','Ivory Coast','Jamaica','Jordan','Kazakstan','Kenya','Kuwait','Kyrgyzstan','Laos','Latvia','Lebanon','Lesotho','Liberia','Libya','Lithuania','Luxembourg','Macedonia','Madagascar','Malawi','Malaysia','Maldives','Mali','Malta','Mauritania','Mauritius','Mexico','Moldova','Monaco','Mongolia','Montenegro','Morocco','Mozambique','Myanmar(Burma)','Namibia','Nepal','Netherlands','New Zealand','Nicaragua','Niger','Nigeria','NorthKorea','Norway','Oman','Pakistan','Panama','Paraguay','Peru','Philippines','Portugal','PuertoRico','Qatar','Romania','Russia','Rwanda','SanMarino','SaudiArabia','Senegal','Serbia','SierraLeone','Slovakia','Slovenia','Somalia','SouthAfrica','Spain','SriLanka','Sudan','Suriname','Swaziland','Sweden','Switzerland','Syria','Tajikstan','Tanzania','Thailand','Togo','Tonga','TrinidadandTobago','Tunisia','Turkey','Turkmenistan','U.S.Virgin Islands','Uganda','Ukraine','Uruguay','Uzbekistan','Venezuela','Vietnam','Yemen','Zambia','Zimbabwe','Andorra','Reunion','Poland','Guam','Vatican','Liechtensteins','Curacao','Seychelles','Antarctica','Gibraltar','Cuba','Faroe Islands','Ahvenanmaa','Bermuda','Timor-Leste'];
-const specialRegex = [
+const NAMES_FULL = ['Hong Kong', 'Macao', 'Taiwan', 'Japan', 'Korea', 'Singapore', 'United States', 'United Kingdom', 'France', 'Germany', 'Australia', 'Dubai', 'Afghanistan', 'Albania', 'Algeria', 'Angola', 'Argentina', 'Armenia', 'Austria', 'Azerbaijan', 'Bahrain', 'Bangladesh', 'Belarus', 'Belgium', 'Belize', 'Benin', 'Bhutan', 'Bolivia', 'Bosnia and Herzegovina', 'Botswana', 'Brazil', 'British Virgin Islands', 'Brunei', 'Bulgaria', 'Burkina-faso', 'Burundi', 'Cambodia', 'Cameroon', 'Canada', 'CapeVerde', 'CaymanIslands', 'Central African Republic', 'Chad', 'Chile', 'Colombia', 'Comoros', 'Congo-Brazzaville', 'Congo-Kinshasa', 'CostaRica', 'Croatia', 'Cyprus', 'Czech Republic', 'Denmark', 'Djibouti', 'Dominican Republic', 'Ecuador', 'Egypt', 'EISalvador', 'Equatorial Guinea', 'Eritrea', 'Estonia', 'Ethiopia', 'Fiji', 'Finland', 'Gabon', 'Gambia', 'Georgia', 'Ghana', 'Greece', 'Greenland', 'Guatemala', 'Guinea', 'Guyana', 'Haiti', 'Honduras', 'Hungary', 'Iceland', 'India', 'Indonesia', 'Iran', 'Iraq', 'Ireland', 'Isle of Man', 'Israel', 'Italy', 'Ivory Coast', 'Jamaica', 'Jordan', 'Kazakstan', 'Kenya', 'Kuwait', 'Kyrgyzstan', 'Laos', 'Latvia', 'Lebanon', 'Lesotho', 'Liberia', 'Libya', 'Lithuania', 'Luxembourg', 'Macedonia', 'Madagascar', 'Malawi', 'Malaysia', 'Maldives', 'Mali', 'Malta', 'Mauritania', 'Mauritius', 'Mexico', 'Moldova', 'Monaco', 'Mongolia', 'Montenegro', 'Morocco', 'Mozambique', 'Myanmar(Burma)', 'Namibia', 'Nepal', 'Netherlands', 'New Zealand', 'Nicaragua', 'Niger', 'Nigeria', 'NorthKorea', 'Norway', 'Oman', 'Pakistan', 'Panama', 'Paraguay', 'Peru', 'Philippines', 'Portugal', 'PuertoRico', 'Qatar', 'Romania', 'Russia', 'Rwanda', 'SanMarino', 'SaudiArabia', 'Senegal', 'Serbia', 'SierraLeone', 'Slovakia', 'Slovenia', 'Somalia', 'SouthAfrica', 'Spain', 'SriLanka', 'Sudan', 'Suriname', 'Swaziland', 'Sweden', 'Switzerland', 'Syria', 'Tajikstan', 'Tanzania', 'Thailand', 'Togo', 'Tonga', 'TrinidadandTobago', 'Tunisia', 'Turkey', 'Turkmenistan', 'U.S.Virgin Islands', 'Uganda', 'Ukraine', 'Uruguay', 'Uzbekistan', 'Venezuela', 'Vietnam', 'Yemen', 'Zambia', 'Zimbabwe', 'Andorra', 'Reunion', 'Poland', 'Guam', 'Vatican', 'Liechtensteins', 'Curacao', 'Seychelles', 'Antarctica', 'Gibraltar', 'Cuba', 'Faroe Islands', 'Ahvenanmaa', 'Bermuda', 'Timor-Leste'];
+
+// ============================================================================
+// 正则表达式 - 匹配规则
+// ============================================================================
+
+// 特殊标识匹配（用于排序）
+const SPECIAL_REGEX = [
     /(\d\.)?\d+×/,
     /IPLC|IEPL|Kern|Edge|Pro|Std|Exp|Biz|Fam|Game|Buy|Zx|LB|Game/,
 ];
-const nameclear =
+
+// 清理乱名匹配
+const JUNK_NAME_REGEX =
     /(套餐|到期|有效|剩余|版本|已用|过期|失联|测试|官方|网址|备用|群|TEST|客服|网站|获取|订阅|流量|机场|下次|官址|联系|邮箱|工单|学术|USE|USED|TOTAL|EXPIRE|EMAIL)/i;
+
+// 固定格式匹配（用于 blgd 参数）
 // prettier-ignore
-// Modify: Add 特殊; Adjust the order //
-const regexArray=[/ˣ²/, /ˣ³/, /ˣ⁴/, /ˣ⁵/, /ˣ⁶/, /ˣ⁷/, /ˣ⁸/, /ˣ⁹/, /ˣ¹⁰/, /ˣ²⁰/, /ˣ³⁰/, /ˣ⁴⁰/, /ˣ⁵⁰/, /专线/, /IPLC/i, /IEPL/i, /核心/, /边缘/, /高级/, /标准/, /特殊/, /实验/, /商宽/, /家宽/, /游戏|game/i, /购物/, /LB/, /cloudflare/i, /\budp\b/i, /\bgpt\b/i, /udpn\b/, ];
+const FIXED_FORMAT_REGEX = [/ˣ²/, /ˣ³/, /ˣ⁴/, /ˣ⁵/, /ˣ⁶/, /ˣ⁷/, /ˣ⁸/, /ˣ⁹/, /ˣ¹⁰/, /ˣ²⁰/, /ˣ³⁰/, /ˣ⁴⁰/, /ˣ⁵⁰/, /IPLC/i, /IEPL/i, /核心/, /边缘/, /高级/, /标准/, /实验/, /商宽/, /家宽/, /游戏|game/i, /购物/, /专线/, /LB/, /cloudflare/i, /\budp\b/i, /\bgpt\b/i, /udpn\b/];
 // prettier-ignore
-// Modify: Zx -> DL(Dedicated Line); Add Spec; Adjust the order //
-const valueArray= [ "2×","3×","4×","5×","6×","7×","8×","9×","10×","20×","30×","40×","50×","DL","IPLC","IEPL","Kern","Edge","Pro","Std","Spec","Exp","Biz","Fam","Game","Buy","LB","CF","UDP","GPT","UDPN"];
-const nameblnx = /(高倍|(?!1)2+(x|倍)|ˣ²|ˣ³|ˣ⁴|ˣ⁵|ˣ¹⁰)/i;
-const namenx = /(高倍|(?!1)(0\.|\d)+(x|倍)|ˣ²|ˣ³|ˣ⁴|ˣ⁵|ˣ¹⁰)/i;
-const keya =
+const FIXED_FORMAT_VALUES = ["1X", "2X", "3X", "4X", "5X", "6X", "7X", "8X", "9X", "2×", "3×", "4×", "5×", "6×", "7×", "8×", "9×", "10×", "20×", "30×", "40×", "50×", "IPLC", "IEPL", "Kern", "Edge", "Pro", "Std", "Exp", "Biz", "Fam", "Game", "Buy", "Zx", "LB", "CF", "UDP", "GPT", "UDPN"];
+
+// 倍率匹配
+const HIGH_MULTIPLIER_REGEX = /(高倍|(?!1)2+(x|倍)|(X|倍)|ˣ²|ˣ³|ˣ⁴|ˣ⁵|ˣ¹⁰)/i;
+const ANY_MULTIPLIER_REGEX =
+    /(高倍|(?!1)(0\.|\d)+(x|倍)|(X|倍)|ˣ²|ˣ³|ˣ⁴|ˣ⁵|ˣ¹⁰)/i;
+
+// 关键词过滤（用于 key 参数）
+const KEY_REGION_REGEX =
     /港|Hong|HK|新加坡|SG|Singapore|日本|Japan|JP|美国|United States|US|韩|土耳其|TR|Turkey|Korea|KR|🇸🇬|🇭🇰|🇯🇵|🇺🇸|🇰🇷|🇹🇷/i;
-const keyb =
+const KEY_NUMBER_FILTER_REGEX =
     /(((1|2|3|4)\d)|(香港|Hong|HK) 0[5-9]|((新加坡|SG|Singapore|日本|Japan|JP|美国|United States|US|韩|土耳其|TR|Turkey|Korea|KR) 0[3-9]))/i;
-const rurekey = {
+
+// ============================================================================
+// 名称替换规则 - 统一地名/关键词
+// ============================================================================
+
+const NAME_REPLACE_RULES = {
+    // 英文标准化
     GB: /UK/g,
     'B-G-P': /BGP/g,
     'Russia Moscow': /Moscow/g,
@@ -107,6 +141,8 @@ const rurekey = {
     'Dubai United Arab Emirates': /United Arab Emirates/g,
     'Taiwan TW 台湾 🇹🇼': /(台|Tai\s?wan|TW).*?🇨🇳|🇨🇳.*?(台|Tai\s?wan|TW)/g,
     'United States': /USA|Los Angeles|San Jose|Silicon Valley|Michigan/g,
+
+    // 中文标准化
     澳大利亚: /澳洲|墨尔本|悉尼|土澳|(深|沪|呼|京|广|杭)澳/g,
     德国: /(深|沪|呼|京|广|杭)德(?!.*(I|线))|法兰克福|滬德/g,
     香港: /(深|沪|呼|京|广|杭)港(?!.*(I|线))/g,
@@ -131,186 +167,405 @@ const rurekey = {
     土耳其: /伊斯坦布尔/g,
     泰国: /泰國|曼谷/g,
     法国: /巴黎/g,
+
+    // 其他清理
     G: /\d\s?GB/gi,
     Esnc: /esnc/gi,
 };
 
-let GetK = false,
-    AMK = [];
-function ObjKA(i) {
-    GetK = true;
-    AMK = Object.entries(i);
+// ============================================================================
+// 全局状态（用于映射表缓存）
+// ============================================================================
+
+let regionMapInitialized = false;
+let regionMapEntries = [];
+
+/**
+ * 初始化区域映射表
+ * @param {Object} mapObj - 区域名称映射对象
+ */
+function initRegionMap(mapObj) {
+    regionMapInitialized = true;
+    regionMapEntries = Object.entries(mapObj);
 }
 
-function operator(pro) {
-    const Allmap = {};
-    const outList = getList(outputName);
-    let inputList,
-        retainKey = '';
-    if (inname !== '') {
-        inputList = [getList(inname)];
-    } else {
-        inputList = [ZH, FG, QC, EN];
+// ============================================================================
+// 辅助函数
+// ============================================================================
+
+/**
+ * 根据格式类型获取对应的名称列表
+ * @param {string} format - 格式类型: 'us' | 'gq' | 'quan' | 默认中文
+ * @returns {Array} 名称列表
+ */
+function getNameList(format) {
+    switch (format) {
+        case 'us':
+            return CODES_EN;
+        case 'gq':
+            return FLAGS;
+        case 'quan':
+            return NAMES_FULL;
+        default:
+            return NAMES_ZH;
+    }
+}
+
+/**
+ * 为节点添加序号（处理同名节点）
+ * @param {Array} proxies - 代理节点数组
+ */
+function addSequenceNumbers(proxies) {
+    // 按名称分组并计数
+    const groups = proxies.reduce((acc, proxy) => {
+        const existing = acc.find((g) => g.name === proxy.name);
+        if (existing) {
+            existing.count++;
+            existing.items.push({
+                ...proxy,
+                name: `${proxy.name}${NUM_SEPARATOR}${existing.count
+                    .toString()
+                    .padStart(2, '0')}`,
+            });
+        } else {
+            acc.push({
+                name: proxy.name,
+                count: 1,
+                items: [
+                    {
+                        ...proxy,
+                        name: `${proxy.name}${NUM_SEPARATOR}01`,
+                    },
+                ],
+            });
+        }
+        return acc;
+    }, []);
+
+    // 展平分组结果
+    const flattened =
+        typeof Array.prototype.flatMap === 'function'
+            ? groups.flatMap((g) => g.items)
+            : groups.reduce((acc, g) => acc.concat(g.items), []);
+
+    // 原地更新数组
+    proxies.splice(0, proxies.length, ...flattened);
+    return proxies;
+}
+
+/**
+ * 移除只有单个节点地区的 01 后缀
+ * @param {Array} proxies - 代理节点数组
+ */
+function removeSingleNodeSuffix(proxies) {
+    // 按基础名称分组
+    const groups = proxies.reduce((acc, proxy) => {
+        // 提取基础名称（去除末尾的数字序号）
+        const baseName = proxy.name.replace(
+            /[^A-Za-z0-9\u00C0-\u017F\u4E00-\u9FFF]+\d+$/,
+            ''
+        );
+        if (!acc[baseName]) {
+            acc[baseName] = [];
+        }
+        acc[baseName].push(proxy);
+        return acc;
+    }, {});
+
+    // 处理只有单个节点的分组
+    for (const baseName in groups) {
+        const group = groups[baseName];
+        if (group.length === 1 && group[0].name.endsWith('01')) {
+            group[0].name = group[0].name.replace(/[^.]01/, '');
+        }
+    }
+    return proxies;
+}
+
+/**
+ * 按特殊标识排序节点
+ * @param {Array} proxies - 代理节点数组
+ * @returns {Array} 排序后的数组
+ */
+function sortBySpecialMarkers(proxies) {
+    const withMarkers = [];
+    const withoutMarkers = [];
+
+    // 分离有/无特殊标识的节点
+    for (const proxy of proxies) {
+        const hasMarker = SPECIAL_REGEX.some((regex) => regex.test(proxy.name));
+        if (hasMarker) {
+            withMarkers.push(proxy);
+        } else {
+            withoutMarkers.push(proxy);
+        }
     }
 
-    inputList.forEach((arr) => {
-        arr.forEach((value, valueIndex) => {
-            Allmap[value] = outList[valueIndex];
+    // 对有标识的节点按标识类型排序
+    const markerIndices = withMarkers.map((proxy) =>
+        SPECIAL_REGEX.findIndex((regex) => regex.test(proxy.name))
+    );
+    withMarkers.sort((a, b) => {
+        const indexDiff =
+            markerIndices[withMarkers.indexOf(a)] -
+            markerIndices[withMarkers.indexOf(b)];
+        return indexDiff || a.name.localeCompare(b.name);
+    });
+
+    // 无标识的保持原顺序
+    withoutMarkers.sort((a, b) => proxies.indexOf(a) - proxies.indexOf(b));
+
+    return withoutMarkers.concat(withMarkers);
+}
+
+// ============================================================================
+// 主函数
+// ============================================================================
+
+/**
+ * Sub-Store 脚本入口函数
+ * @param {Array} proxies - 代理节点数组
+ * @returns {Array} 处理后的代理节点数组
+ */
+function operator(proxies) {
+    // 早期返回：空数组检查
+    if (!proxies?.length) {
+        return proxies;
+    }
+
+    // 构建区域映射表
+    const regionMap = {};
+    const outputList = getNameList(outputFormat);
+    let inputLists;
+
+    if (inputFormat !== '') {
+        inputLists = [getNameList(inputFormat)];
+    } else {
+        inputLists = [NAMES_ZH, FLAGS, NAMES_FULL, CODES_EN];
+    }
+
+    inputLists.forEach((arr) => {
+        arr.forEach((value, index) => {
+            regionMap[value] = outputList[index];
         });
     });
 
-    if (clear || nx || blnx || key) {
-        pro = pro.filter((res) => {
-            const resname = res.name;
+    // 过滤阶段：根据参数过滤节点
+    if (
+        enableClearJunk ||
+        enableMultiplierFilter ||
+        enableHighMultiplier ||
+        enableKeyFilter
+    ) {
+        proxies = proxies.filter((proxy) => {
+            const name = proxy.name;
             const shouldKeep =
-                !(clear && nameclear.test(resname)) &&
-                !(nx && namenx.test(resname)) &&
-                !(blnx && !nameblnx.test(resname)) &&
-                !(key && !(keya.test(resname) && /2|4|6|7/i.test(resname)));
+                !(enableClearJunk && JUNK_NAME_REGEX.test(name)) &&
+                !(enableMultiplierFilter && ANY_MULTIPLIER_REGEX.test(name)) &&
+                !(enableHighMultiplier && !HIGH_MULTIPLIER_REGEX.test(name)) &&
+                !(
+                    enableKeyFilter &&
+                    !(KEY_REGION_REGEX.test(name) && /2|4|6|7/i.test(name))
+                );
             return shouldKeep;
         });
     }
 
-    const BLKEYS = BLKEY ? BLKEY.split('+') : '';
+    // 解析保留关键词
+    const retainKeywords = RETAIN_KEYWORDS ? RETAIN_KEYWORDS.split('+') : [];
 
-    pro.forEach((e) => {
-        let bktf = false,
-            ens = e.name;
-        // 预处理 防止预判或遗漏
-        Object.keys(rurekey).forEach((ikey) => {
-            if (rurekey[ikey].test(e.name)) {
-                e.name = e.name.replace(rurekey[ikey], ikey);
-                if (BLKEY) {
-                    bktf = true;
-                    let BLKEY_REPLACE = '',
-                        re = false;
-                    BLKEYS.forEach((i) => {
-                        if (i.includes('>') && ens.includes(i.split('>')[0])) {
-                            if (rurekey[ikey].test(i.split('>')[0])) {
-                                e.name += ' ' + i.split('>')[0];
+    // 处理每个节点
+    proxies.forEach((proxy) => {
+        let keywordProcessed = false;
+        const originalName = proxy.name;
+        let retainedKeyword = '';
+
+        // 预处理：应用名称替换规则
+        Object.keys(NAME_REPLACE_RULES).forEach((targetName) => {
+            const pattern = NAME_REPLACE_RULES[targetName];
+            if (pattern.test(proxy.name)) {
+                proxy.name = proxy.name.replace(pattern, targetName);
+
+                // 处理保留关键词
+                if (RETAIN_KEYWORDS) {
+                    keywordProcessed = true;
+                    let replacement = '';
+                    let hasReplacement = false;
+
+                    retainKeywords.forEach((keyword) => {
+                        if (
+                            keyword.includes('>') &&
+                            originalName.includes(keyword.split('>')[0])
+                        ) {
+                            // 检查是否匹配替换规则
+                            if (pattern.test(keyword.split('>')[0])) {
+                                proxy.name += ' ' + keyword.split('>')[0];
                             }
-                            if (i.split('>')[1]) {
-                                BLKEY_REPLACE = i.split('>')[1];
-                                re = true;
+                            if (keyword.split('>')[1]) {
+                                replacement = keyword.split('>')[1];
+                                hasReplacement = true;
                             }
                         } else {
-                            if (ens.includes(i)) {
-                                e.name += ' ' + i;
+                            if (originalName.includes(keyword)) {
+                                proxy.name += ' ' + keyword;
                             }
                         }
-                        retainKey = re
-                            ? BLKEY_REPLACE
-                            : BLKEYS.filter((items) => e.name.includes(items));
+                        retainedKeyword = hasReplacement
+                            ? replacement
+                            : retainKeywords.filter((k) =>
+                                  originalName.includes(k)
+                              );
                     });
                 }
             }
         });
-        if (blockquic == 'on') {
-            e['block-quic'] = 'on';
-        } else if (blockquic == 'off') {
-            e['block-quic'] = 'off';
+
+        // 处理 block-quic 设置
+        if (blockquic === 'on') {
+            proxy['block-quic'] = 'on';
+        } else if (blockquic === 'off') {
+            proxy['block-quic'] = 'off';
         } else {
-            delete e['block-quic'];
+            delete proxy['block-quic'];
         }
 
-        // 自定义
-        if (!bktf && BLKEY) {
-            let BLKEY_REPLACE = '',
-                re = false;
-            BLKEYS.forEach((i) => {
-                if (i.includes('>') && e.name.includes(i.split('>')[0])) {
-                    if (i.split('>')[1]) {
-                        BLKEY_REPLACE = i.split('>')[1];
-                        re = true;
+        // 处理未被预处理覆盖的保留关键词
+        if (!keywordProcessed && RETAIN_KEYWORDS) {
+            let replacement = '';
+            let hasReplacement = false;
+
+            retainKeywords.forEach((keyword) => {
+                if (
+                    keyword.includes('>') &&
+                    proxy.name.includes(keyword.split('>')[0])
+                ) {
+                    if (keyword.split('>')[1]) {
+                        replacement = keyword.split('>')[1];
+                        hasReplacement = true;
                     }
                 }
             });
-            retainKey = re
-                ? BLKEY_REPLACE
-                : BLKEYS.filter((items) => e.name.includes(items));
+            retainedKeyword = hasReplacement
+                ? replacement
+                : retainKeywords.filter((k) => originalName.includes(k));
         }
 
-        let ikey = '',
-            ikeys = '';
-        // 保留固定格式 倍率
-        if (blgd) {
-            regexArray.forEach((regex, index) => {
-                if (regex.test(e.name)) {
-                    ikeys = valueArray[index];
+        // 提取固定格式标识
+        let fixedFormatMarker = '';
+        if (enableFixedFormat) {
+            FIXED_FORMAT_REGEX.forEach((regex, index) => {
+                if (regex.test(proxy.name)) {
+                    fixedFormatMarker = FIXED_FORMAT_VALUES[index];
                 }
             });
         }
 
-        // 正则 匹配倍率
-        if (bl) {
-            const match = e.name.match(
+        // 提取倍率标识
+        let multiplierMarker = '';
+        if (enableMultiplierDetect) {
+            // 匹配格式："2倍", "3×", "X2" 等
+            let match = originalName.match(
                 /((倍率|X|x|×)\D?((\d{1,3}\.)?\d+)\D?)|((\d{1,3}\.)?\d+)(倍|X|x|×)/
             );
+
+            // 尝试匹配连字符格式："V373U-2X-BGP" 等
+            if (!match) {
+                match = originalName.match(/-(\d+(?:\.\d+)?)[Xx]-/);
+                if (match) {
+                    match[0] = match[1] + '倍';
+                }
+            }
+
             if (match) {
-                const rev = match[0].match(/(\d[\d.]*)/)[0];
-                if (rev !== '1') {
-                    const newValue = rev + '×';
-                    ikey = newValue;
+                const multiplierValue = match[0].match(/(\d[\d.]*)/)[0];
+                if (multiplierValue !== '1') {
+                    multiplierMarker = multiplierValue + '倍';
                 }
             }
         }
 
-        !GetK && ObjKA(Allmap);
-        // 匹配 Allkey 地区
-        const findKey = AMK.find(([key]) => e.name.includes(key));
-
-        let firstName = '',
-            nNames = '';
-
-        if (nf) {
-            firstName = FNAME;
-        } else {
-            nNames = FNAME;
+        // 初始化区域映射（懒加载）
+        if (!regionMapInitialized) {
+            initRegionMap(regionMap);
         }
-        if (findKey?.[1]) {
-            const findKeyValue = findKey[1];
-            let keyover = [],
-                usflag = '';
-            if (addflag) {
-                const index = outList.indexOf(findKeyValue);
+
+        // 匹配区域
+        const matchedRegion = regionMapEntries.find(([key]) =>
+            proxy.name.includes(key)
+        );
+
+        // 构建新名称
+        let prefixPart = '';
+        let namePart = '';
+
+        if (prefixFirst) {
+            prefixPart = PREFIX_NAME;
+        } else {
+            namePart = PREFIX_NAME;
+        }
+
+        if (matchedRegion?.[1]) {
+            const regionName = matchedRegion[1];
+            const nameParts = [];
+
+            // 添加国旗
+            let flag = '';
+            if (enableFlag) {
+                const index = outputList.indexOf(regionName);
                 if (index !== -1) {
-                    usflag = FG[index];
-                    usflag = usflag === '🇹🇼' ? '🇨🇳' : usflag;
+                    flag = FLAGS[index];
+                    // 台湾使用中国国旗
+                    flag = flag === '🇹🇼' ? '🇨🇳' : flag;
                 }
             }
-            keyover = keyover
-                .concat(
-                    firstName,
-                    usflag,
-                    nNames,
-                    findKeyValue,
-                    retainKey,
-                    ikey,
-                    ikeys
-                )
-                .filter((k) => k !== '');
-            e.name = keyover.join(FGF);
+
+            // 组装名称各部分
+            nameParts.push(
+                prefixPart,
+                flag,
+                namePart,
+                regionName,
+                retainedKeyword,
+                multiplierMarker,
+                fixedFormatMarker
+            );
+
+            // 过滤空值并用分隔符连接
+            proxy.name = nameParts
+                .filter((part) => part !== '')
+                .join(SEPARATOR);
         } else {
-            if (nm) {
-                e.name = FNAME + FGF + e.name;
+            // 未匹配到区域
+            if (keepUnmatched) {
+                proxy.name = PREFIX_NAME + SEPARATOR + proxy.name;
             } else {
-                e.name = null;
+                proxy.name = null;
             }
         }
     });
-    pro = pro.filter((e) => e.name !== null);
-    jxh(pro);
-    numone && oneP(pro);
-    blpx && (pro = fampx(pro));
-    key && (pro = pro.filter((e) => !keyb.test(e.name)));
-    return pro;
-}
 
-// prettier-ignore
-function getList(arg) { switch (arg) { case 'us': return EN; case 'gq': return FG; case 'quan': return QC; default: return ZH; }}
-// prettier-ignore
-function jxh(e) { const n = e.reduce((e, n) => { const t = e.find((e) => e.name === n.name); if (t) { t.count++; t.items.push({ ...n, name: `${n.name}${XHFGF}${t.count.toString().padStart(2, "0")}`, }); } else { e.push({ name: n.name, count: 1, items: [{ ...n, name: `${n.name}${XHFGF}01` }], }); } return e; }, []);const t=(typeof Array.prototype.flatMap==='function'?n.flatMap((e) => e.items):n.reduce((acc, e) => acc.concat(e.items),[])); e.splice(0, e.length, ...t); return e;}
-// prettier-ignore
-function oneP(e) { const t = e.reduce((e, t) => { const n = t.name.replace(/[^A-Za-z0-9\u00C0-\u017F\u4E00-\u9FFF]+\d+$/, ""); if (!e[n]) { e[n] = []; } e[n].push(t); return e; }, {}); for (const e in t) { if (t[e].length === 1 && t[e][0].name.endsWith("01")) {/* const n = t[e][0]; n.name = e;*/ t[e][0].name= t[e][0].name.replace(/[^.]01/, "") } } return e; }
-// prettier-ignore
-function fampx(pro) { const wis = []; const wnout = []; for (const proxy of pro) { const fan = specialRegex.some((regex) => regex.test(proxy.name)); if (fan) { wis.push(proxy); } else { wnout.push(proxy); } } const sps = wis.map((proxy) => specialRegex.findIndex((regex) => regex.test(proxy.name)) ); wis.sort( (a, b) => sps[wis.indexOf(a)] - sps[wis.indexOf(b)] || a.name.localeCompare(b.name) ); wnout.sort((a, b) => pro.indexOf(a) - pro.indexOf(b)); return wnout.concat(wis);}
+    // 移除未匹配的节点（name 为 null）
+    proxies = proxies.filter((proxy) => proxy.name !== null);
+
+    // 添加序号
+    addSequenceNumbers(proxies);
+
+    // 移除单节点的 01 后缀
+    if (removeOnlyOne) {
+        removeSingleNodeSuffix(proxies);
+    }
+
+    // 按倍率排序
+    if (enableSortByMultiplier) {
+        proxies = sortBySpecialMarkers(proxies);
+    }
+
+    // 关键词数量过滤
+    if (enableKeyFilter) {
+        proxies = proxies.filter(
+            (proxy) => !KEY_NUMBER_FILTER_REGEX.test(proxy.name)
+        );
+    }
+
+    return proxies;
+}
