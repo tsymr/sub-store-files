@@ -3,24 +3,13 @@
 # =========================
 proxies:
 # 在此粘贴你的节点，格式示例：
-  - name: webshare
-    # type: socks5
-    # server: 
-    # port: 
-    # username: 
-    # password:
-    # tls: false
-    # skip-cert-verify: true
-    dialer-proxy: "日本 -> 美国"
-#     # udp: true
-#     dialer-proxy: 🔗 中转节点  # 通过订阅节点中转，webshare 作为落地
-
 
 # =========================
 # 订阅链接（填入后自动拉取节点）
 # =========================
 # 把 url 替换成你的 Clash 订阅链接，不用的订阅保持不变即可
 proxy-providers:
+
 
 # =========================
 # 代理组配置
@@ -33,108 +22,94 @@ proxy-groups:
   - name: 🚀 节点选择
     type: select
     proxies: [DIRECT, REJECT, ⚡ 自动选择]
-    include-all-proxies: true
-    use: [订阅1, 订阅2, 订阅3, 订阅4]
+    use: [订阅1, 订阅2]
   - name: ⚡ 自动选择
     type: url-test
-    include-all-proxies: true
-    use: [订阅1, 订阅2, 订阅3, 订阅4]
+    use: [订阅1, 订阅2]
     url: https://www.gstatic.com/generate_204
     interval: 300
     lazy: false
   - name: 🛑 广告拦截
     type: select
     proxies: [DIRECT, REJECT, 🚀 节点选择, ⚡ 自动选择]
-  - name: 日本 -> 美国
+  - name: 日本转发
     type: select
-    include-all-proxies: true
-    use: [订阅2, 订阅3, 订阅4]
+    use: [订阅2]
     filter: "(?i)jp|日本|东京|osaka|tokyo"
   - name: 💬 AI 服务
-    type: select
-    proxies: [DIRECT, REJECT, 🚀 节点选择, ⚡ 自动选择]
-    include-all-proxies: true
-    use: [订阅1, 订阅2, 订阅3, 订阅4]
+    type: relay
+    proxies:
+      - 日本转发
+      - webshare
   - name: 📹 油管视频
     type: select
     proxies: [DIRECT, REJECT, 🚀 节点选择, ⚡ 自动选择]
-    include-all-proxies: true
-    use: [订阅1, 订阅2, 订阅3, 订阅4]
+    use: [订阅1, 订阅2]
   - name: 🔍 谷歌服务
-    type: select
-    proxies: [DIRECT, REJECT, 🚀 节点选择, ⚡ 自动选择]
-    include-all-proxies: true
-    use: [订阅1, 订阅2, 订阅3, 订阅4]
+    type: relay
+    proxies:
+      - 日本转发
+      - webshare
   - name: 🏠 私有网络
     type: select
     proxies: [DIRECT, REJECT, 🚀 节点选择, ⚡ 自动选择]
-    include-all-proxies: true
-    use: [订阅1, 订阅2, 订阅3, 订阅4]    
+    use: [订阅1, 订阅2]    
   - name: 🔒 国内服务
     type: select
     proxies: [DIRECT, REJECT, 🚀 节点选择, ⚡ 自动选择]
-    include-all-proxies: true
-    use: [订阅1, 订阅2, 订阅3, 订阅4]    
+    use: [订阅1, 订阅2]    
   - name: 📲 电报消息
     type: select
     proxies: [DIRECT, REJECT, 🚀 节点选择, ⚡ 自动选择]
-    include-all-proxies: true
-    use: [订阅1, 订阅2, 订阅3, 订阅4]
+    use: [订阅1, 订阅2]
   - name: 🐱 Github
-    type: select
-    proxies: [DIRECT, REJECT, 🚀 节点选择, ⚡ 自动选择]
-    include-all-proxies: true
-    use: [订阅1, 订阅2, 订阅3, 订阅4]
+    type: relay
+    proxies:
+      - 日本转发
+      - webshare
   - name: Ⓜ️ 微软服务
-    type: select
-    proxies: [DIRECT, REJECT, 🚀 节点选择, ⚡ 自动选择]
-    include-all-proxies: true
-    use: [订阅1, 订阅2, 订阅3, 订阅4]
+    type: relay
+    proxies:
+      - 日本转发
+      - webshare
   - name: 🍏 苹果服务
     type: select
     proxies: [DIRECT, REJECT, 🚀 节点选择, ⚡ 自动选择]
-    include-all-proxies: true
-    use: [订阅1, 订阅2, 订阅3, 订阅4]
+    use: [订阅1, 订阅]
   - name: 🌐 社交媒体
     type: select
     proxies: [DIRECT, REJECT, 🚀 节点选择, ⚡ 自动选择]
-    include-all-proxies: true
-    use: [订阅1, 订阅2, 订阅3, 订阅4]
+    use: [订阅1, 订阅2]
   - name: 🎬 流媒体
     type: select
     proxies: [DIRECT, REJECT, 🚀 节点选择, ⚡ 自动选择]
-    include-all-proxies: true
-    use: [订阅1, 订阅2, 订阅3, 订阅4]
+    use: [订阅1, 订阅2]
   - name: 🎮 游戏平台
     type: select
     proxies: [DIRECT, REJECT, 🚀 节点选择, ⚡ 自动选择]
-    include-all-proxies: true
-    use: [订阅1, 订阅2, 订阅3, 订阅4]
+    use: [订阅1, 订阅2]
   - name: 📚 教育资源
     type: select
     proxies: [DIRECT, REJECT, 🚀 节点选择, ⚡ 自动选择]
-    include-all-proxies: true
-    use: [订阅1, 订阅2, 订阅3, 订阅4]
+    use: [订阅1, 订阅2]
   - name: ☁️ 云服务
-    type: select
-    proxies: [DIRECT, REJECT, 🚀 节点选择, ⚡ 自动选择]
-    include-all-proxies: true
-    use: [订阅1, 订阅2, 订阅3, 订阅4]
+    type: relay
+    proxies:
+      - 日本转发
+      - webshare
   - name: 💰 金融服务
-    type: select
-    proxies: [DIRECT, REJECT, 🚀 节点选择, ⚡ 自动选择]
-    include-all-proxies: true
-    use: [订阅1, 订阅2, 订阅3, 订阅4]
+    type: relay
+    proxies:
+      - 日本转发
+      - webshare
   - name: 🌐 非中国
     type: select
     proxies: [DIRECT, REJECT, 🚀 节点选择, ⚡ 自动选择]
-    include-all-proxies: true
-    use: [订阅1, 订阅2, 订阅3, 订阅4]
+    use: [订阅1, 订阅2]
   - name: 🐟 漏网之鱼
     type: select
     proxies: [DIRECT, REJECT, 🚀 节点选择, ⚡ 自动选择]
-    include-all-proxies: true
-    use: [订阅1, 订阅2, 订阅3, 订阅4]
+    use: [订阅1, 订阅2]
 
 # =========================
 # 端口监听配置（可选）
