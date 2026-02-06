@@ -3,13 +3,22 @@
 # =========================
 proxies:
 # 在此粘贴你的节点，格式示例：
-
+  - name: webshare
+    type: socks5
+    server: 
+    port: 6299
+    username: 
+    password: 
+    tls: false
+    skip-cert-verify: true
+#     # udp: true
 # =========================
 # 订阅链接（填入后自动拉取节点）
 # =========================
 # 把 url 替换成你的 Clash 订阅链接，不用的订阅保持不变即可
 proxy-providers:
-
+  订阅1: {type: http, url: "", path: ./providers/sub1.yaml, interval: 3600, health-check: {enable: true, url: "https://www.gstatic.com/generate_204", interval: 300, lazy: true}}
+  订阅2: {type: http, url: "", path: ./providers/sub2.yaml, interval: 3600, health-check: {enable: true, url: "https://www.gstatic.com/generate_204", interval: 300, lazy: true}}
 
 # =========================
 # 代理组配置
@@ -186,6 +195,7 @@ rule-providers:
   private: {type: http, format: mrs, behavior: ipcidr, url: "https://github.com/MetaCubeX/meta-rules-dat/raw/refs/heads/meta/geo/geoip/private.mrs", path: ./ruleset/private.mrs, interval: 86400}
   geolocation-cn: {type: http, format: mrs, behavior: domain, url: "https://github.com/MetaCubeX/meta-rules-dat/raw/refs/heads/meta/geo/geosite/geolocation-cn.mrs", path: ./ruleset/geolocation-cn.mrs, interval: 86400}
   cn: {type: http, format: mrs, behavior: ipcidr, url: "https://github.com/MetaCubeX/meta-rules-dat/raw/refs/heads/meta/geo/geoip/cn.mrs", path: ./ruleset/cn.mrs, interval: 86400}
+  geocn: {type: http, format: mrs, behavior: domain, url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/meta/geo/geosite/cn.mrs", path: ./ruleset/geocn.mrs, interval: 86400}
   telegram: {type: http, format: mrs, behavior: domain, url: "https://github.com/MetaCubeX/meta-rules-dat/raw/refs/heads/meta/geo/geosite/telegram.mrs", path: ./ruleset/telegram.mrs, interval: 86400}
   github: {type: http, format: mrs, behavior: domain, url: "https://github.com/MetaCubeX/meta-rules-dat/raw/refs/heads/meta/geo/geosite/github.mrs", path: ./ruleset/github.mrs, interval: 86400}
   gitlab: {type: http, format: mrs, behavior: domain, url: "https://github.com/MetaCubeX/meta-rules-dat/raw/refs/heads/meta/geo/geosite/gitlab.mrs", path: ./ruleset/gitlab.mrs, interval: 86400}
@@ -223,7 +233,6 @@ rule-providers:
   heroku: {type: http, format: mrs, behavior: domain, url: "https://github.com/MetaCubeX/meta-rules-dat/raw/refs/heads/meta/geo/geosite/heroku.mrs", path: ./ruleset/heroku.mrs, interval: 86400}
   dropbox: {type: http, format: mrs, behavior: domain, url: "https://github.com/MetaCubeX/meta-rules-dat/raw/refs/heads/meta/geo/geosite/dropbox.mrs", path: ./ruleset/dropbox.mrs, interval: 86400}
   geolocation-!cn: {type: http, format: mrs, behavior: domain, url: "https://github.com/MetaCubeX/meta-rules-dat/raw/refs/heads/meta/geo/geosite/geolocation-!cn.mrs", path: ./ruleset/geolocation-!cn.mrs, interval: 86400}
-
 # =========================
 # 分流规则
 # =========================
@@ -247,6 +256,7 @@ rules:
   - RULE-SET,private,🏠 私有网络,no-resolve
   - RULE-SET,geolocation-cn,🔒 国内服务
   - RULE-SET,cn,🔒 国内服务,no-resolve
+  - RULE-SET,geocn,🔒 国内服务,no-resolve
   - RULE-SET,telegram,📲 电报消息,no-resolve
   - RULE-SET,github,🐱 Github
   - RULE-SET,gitlab,🐱 Github
